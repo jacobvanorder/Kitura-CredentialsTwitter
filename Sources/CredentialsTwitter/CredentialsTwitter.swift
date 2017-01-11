@@ -33,6 +33,7 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
     
     private var oAuthToken: String = ""
     private var oAuthTokenSecret: String = ""
+    private var oAuthTokenVerifier: String = ""
     
     private var hasOAuthToken: Bool {
         return oAuthToken.isEmpty
@@ -87,6 +88,26 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
                               onFailure: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
                               onPass: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
                               inProgress: @escaping () -> Void) {
+        if let verifier = request.queryParameters["oauth_verifier"] {
+            oAuthTokenVerifier = verifier
+            
+        }
+        else {
+            twitterTokenRequest(request: request,
+                                response: response,
+                                options: options,
+                                onSuccess: onSuccess,
+                                onFailure: onFailure,
+                                onPass: onPass,
+                                inProgress: inProgress)
+        }
+    }
+    
+    func twitterTokenRequest(request: RouterRequest, response: RouterResponse,
+                             options: [String:Any], onSuccess: @escaping (UserProfile) -> Void,
+                             onFailure: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
+                             onPass: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
+                             inProgress: @escaping () -> Void) {
         var requestOptions: [ClientRequest.Options] = []
         requestOptions.append(.schema("https://"))
         requestOptions.append(.hostname("api.twitter.com"))
@@ -104,10 +125,14 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
         parameters["oauth_nonce"] = nonce
         parameters["oauth_version"] = "1.0"
         
-        let signature = String.oAuthSignature(fromMethod: "POST",
-                                              url: "https://api.twitter.com/oauth/request_token",
-                                              parameters: parameters,
-                                              with: consumerSecret)!
+        guard let signature = String.oAuthSignature(fromMethod: "POST",
+                                                    url: "https://api.twitter.com/oauth/request_token",
+                                                    parameters: parameters,
+                                                    with: consumerSecret) else {
+                                                        onFailure(nil, nil)
+                                                        return
+        }
+        
         parameters["oauth_signature"] = signature
         
         var keyValues = [String]()
@@ -119,14 +144,14 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
         
         let twitterRequest = HTTP.request(requestOptions) {
             (optionalResponse) in
-            guard let response = optionalResponse, response.statusCode == HTTPStatusCode.OK else {
-                //Fail
+            guard let tokenResponse = optionalResponse, tokenResponse.statusCode == HTTPStatusCode.OK else {
+                onFailure(optionalResponse?.statusCode, nil)
                 return
             }
             
             var body = Data()
             do {
-                try response.readAllData(into: &body)
+                try tokenResponse.readAllData(into: &body)
                 let string = String(data: body, encoding: String.Encoding.utf8)
                 let fields = string?.components(separatedBy: "&")
                 var responseDictionary = [String: String]()
@@ -137,22 +162,46 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
                 
                 guard let token = responseDictionary["oauth_token"],
                     let secret = responseDictionary["oauth_token_secret"] else {
-                        //Fail
+                        onFailure(nil, nil)
                         return
                 }
                 
                 self.oAuthToken = token
                 self.oAuthTokenSecret = secret
                 
-                
+                self.twitterRedirect(token: self.oAuthToken,
+                                     request: request,
+                                     response: response,
+                                     options: options,
+                                     onSuccess: onSuccess,
+                                     onFailure: onFailure,
+                                     onPass: onPass,
+                                     inProgress: inProgress)
             }
             catch {
-                //Fail
+                onFailure(nil, nil)
             }
-            
         }
         
         twitterRequest.end()
+    }
+    
+    func twitterRedirect(token: String,
+                         request: RouterRequest,
+                         response: RouterResponse,
+                         options: [String:Any],
+                         onSuccess: @escaping (UserProfile) -> Void,
+                         onFailure: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
+                         onPass: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
+                         inProgress: @escaping () -> Void) {
+        do {
+            _ = try response.redirect("https://api.twitter.com/oauth/authenticate?oauth_token=\(token)")
+            inProgress()
+        }
+        catch {
+            Log.error("Could not redirect to Twitter")
+            onFailure(nil, nil)
+        }
     }
 }
 
@@ -170,7 +219,7 @@ extension String {
     }
     
     //https://dev.twitter.com/oauth/overview/creating-signatures
-    static func oAuthSignature(fromMethod method: String, url: String, parameters: [String:String], with consumerSecret: String) -> String? {
+    static func oAuthSignature(fromMethod method: String, url: String, parameters: [String:String], with consumerSecret: String, oAuthToken: String = "") -> String? {
         var keyValues = [String]()
         for (key, value) in parameters {
             keyValues.append("\(key)=\(value.addingPercentEncoding(withAllowedCharacters: .twitterParameterStringSet)!)")
@@ -178,15 +227,14 @@ extension String {
         let sortedParameters = keyValues.sorted(by: {$0 < $1})
         let joinedParameters = sortedParameters.joined(separator: "&")
         guard let percentEncodedUrl = url.addingPercentEncoding(withAllowedCharacters: .twitterParameterStringSet),
-            let percentEncodedJoinedParameters = joinedParameters.addingPercentEncoding(withAllowedCharacters: .twitterParameterStringSet) else {
+            let percentEncodedJoinedParameters = joinedParameters.addingPercentEncoding(withAllowedCharacters: .twitterParameterStringSet),
+            let percentEncodedConsumerSecret = consumerSecret.addingPercentEncoding(withAllowedCharacters: .twitterParameterStringSet) else {
                 return nil
         }
         
-        
-        //join method, percent-encoded url, percent-encoded parameters
         let rawString = [method, percentEncodedUrl, percentEncodedJoinedParameters].joined(separator: "&")
         
-        let hmac = HMAC(using: .sha1, key: consumerSecret.addingPercentEncoding(withAllowedCharacters: .twitterParameterStringSet)! + "&")
+        let hmac = HMAC(using: .sha1, key: percentEncodedConsumerSecret + "&" + oAuthToken)
         let encryptedKey = hmac.update(string: rawString)!
         let encodedRawBytes = encryptedKey.final()
         let encodedData = Data(bytes: encodedRawBytes)
