@@ -35,10 +35,6 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
     private var oAuthTokenSecret: String = ""
     private var oAuthTokenVerifier: String = ""
     
-    private var hasOAuthToken: Bool {
-        return oAuthToken.isEmpty
-    }
-    
     //consumerKey
     //consumerSecret
     
@@ -88,9 +84,18 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
                               onFailure: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
                               onPass: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
                               inProgress: @escaping () -> Void) {
-        if let verifier = request.queryParameters["oauth_verifier"] {
+        if let verifier = request.queryParameters["oauth_verifier"],
+            let newOAuthToken = request.queryParameters["oauth_token"],
+            newOAuthToken == oAuthToken {
             oAuthTokenVerifier = verifier
-            
+            twitterAccessTokenRequest(verifier: verifier,
+                                      request: request,
+                                      response: response,
+                                      options: options,
+                                      onSuccess: onSuccess,
+                                      onFailure: onFailure,
+                                      onPass: onPass,
+                                      inProgress: inProgress)
         }
         else {
             twitterTokenRequest(request: request,
@@ -103,6 +108,7 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
         }
     }
     
+    //MARK: Step 1: Obtaining a request token
     func twitterTokenRequest(request: RouterRequest, response: RouterResponse,
                              options: [String:Any], onSuccess: @escaping (UserProfile) -> Void,
                              onFailure: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
@@ -117,7 +123,7 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
         var parameters = [String:String]()
         
         let nonce = String.nonce
-        let timeStamp = String(Int(Date().timeIntervalSince1970))
+        let timeStamp = Date().timeIntervalSince1970.roundedString
         
         parameters["oauth_consumer_key"] = consumerKey
         parameters["oauth_signature_method"] = "HMAC-SHA1"
@@ -186,6 +192,7 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
         twitterRequest.end()
     }
     
+    //MARK: Step 2: Redirecting the user
     func twitterRedirect(token: String,
                          request: RouterRequest,
                          response: RouterResponse,
@@ -203,6 +210,99 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
             onFailure(nil, nil)
         }
     }
+    
+    //MARK: Step 3: Step 3: Converting the request token to an access token
+    func twitterAccessTokenRequest(verifier: String,
+                                   request: RouterRequest,
+                                   response: RouterResponse,
+                                   options: [String:Any],
+                                   onSuccess: @escaping (UserProfile) -> Void,
+                                   onFailure: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
+                                   onPass: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
+                                   inProgress: @escaping () -> Void) {
+        var requestOptions: [ClientRequest.Options] = []
+        requestOptions.append(.schema("https://"))
+        requestOptions.append(.hostname("api.twitter.com"))
+        requestOptions.append(.method("POST"))
+        requestOptions.append(.path("oauth/access_token"))
+        var headers = [String: String]()
+        var parameters = [String:String]()
+        
+        let nonce = String.nonce
+        let timeStamp = Date().timeIntervalSince1970.roundedString
+        
+        parameters["oauth_consumer_key"] = consumerKey
+        parameters["oauth_nonce"] = nonce
+        parameters["oauth_signature_method"] = "HMAC-SHA1"
+        parameters["oauth_timestamp"] = timeStamp
+        parameters["oauth_token"] = oAuthToken
+        parameters["oauth_version"] = "1.0"
+        parameters["oauth_verifier"] = oAuthTokenVerifier
+        
+        let url = "https://api.twitter.com/oauth/access_token?oauth_verifier=\(oAuthTokenVerifier)"
+        guard let signature = String.oAuthSignature(fromMethod: "POST",
+                                                    url: url,
+                                                    parameters: parameters,
+                                                    with: consumerSecret,
+                                                    oAuthToken: oAuthTokenSecret) else {
+                                                        onFailure(nil, nil)
+                                                        return
+        }
+        parameters["oauth_signature"] = signature
+        
+        var keyValues = [String]()
+        for (key, value) in parameters {
+            keyValues.append("\(key)=\(value)")
+        }
+        headers["Authorization"] = "OAuth " + keyValues.sorted().joined(separator: ",")
+        requestOptions.append(.headers(headers))
+        
+        let twitterRequest = HTTP.request(requestOptions) {
+            (optionalResponse) in
+            guard let accessTokenResponse = optionalResponse, accessTokenResponse.statusCode == .OK else {
+                Log.error("Twitter access token response returned with \(optionalResponse?.statusCode)")
+                onFailure(optionalResponse?.statusCode, nil)
+                return
+            }
+            
+            var body = Data()
+            do {
+                try accessTokenResponse.readAllData(into: &body)
+                let string = String(data: body, encoding: .utf8)
+                
+                var responseDictionary = [String: String]()
+                let fields = string?.components(separatedBy: "&")
+                for field in fields! {
+                    let keyValue = field.components(separatedBy: "=")
+                    responseDictionary[keyValue.first!] = keyValue.last!
+                }
+                
+                guard let id = responseDictionary["user_id"],
+                    let displayName = responseDictionary["screen_name"],
+                    let newOAuthToken = responseDictionary["oauth_token"],
+                    let newOAuthTokenSecret = responseDictionary["oauth_token_secret"] else {
+                        Log.error("Twitter access token response not correct.")
+                        onFailure(nil, nil)
+                        return
+                }
+                
+                self.oAuthToken = newOAuthToken
+                self.oAuthTokenSecret = newOAuthTokenSecret
+                
+                let user = UserProfile(id: id,
+                                       displayName: displayName,
+                                       provider: self.name)
+                self.userProfileDelegate?.update(userProfile: user, from: responseDictionary)
+                onSuccess(user)
+            }
+            catch {
+                Log.error("Twitter access token response could not read body data.")
+                onFailure(nil, nil)
+            }
+        }
+        
+        twitterRequest.end()
+    }
 }
 
 extension CharacterSet {
@@ -210,6 +310,12 @@ extension CharacterSet {
         var alphaNumericSet: CharacterSet = .alphanumerics
         alphaNumericSet.insert(charactersIn: "_-.~") //https://dev.twitter.com/oauth/overview/percent-encoding-parameters
         return alphaNumericSet
+    }
+}
+
+extension TimeInterval {
+    var roundedString: String {
+        return String(Int(self))
     }
 }
 

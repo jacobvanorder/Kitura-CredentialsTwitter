@@ -16,6 +16,3 @@
 
 import Credentials
 
-func createUserProfile(from twitterData: [String:Any], for provider: String) -> UserProfile? {
-    return nil
-}
