@@ -295,17 +295,3 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
         twitterRequest.end()
     }
 }
-
-public extension CharacterSet {
-    static var twitterParameterStringSet: CharacterSet {
-        var alphaNumericSet: CharacterSet = .alphanumerics
-        alphaNumericSet.insert(charactersIn: "_-.~") //https://dev.twitter.com/oauth/overview/percent-encoding-parameters
-        return alphaNumericSet
-    }
-}
-
-public extension TimeInterval {
-    var roundedString: String {
-        return String(Int(self))
-    }
-}

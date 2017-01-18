@@ -14,5 +14,12 @@
  * limitations under the License.
  **/
 
-import Credentials
+import Foundation
 
+public extension CharacterSet {
+    static var twitterParameterStringSet: CharacterSet {
+        var alphaNumericSet: CharacterSet = .alphanumerics
+        alphaNumericSet.insert(charactersIn: "_-.~") //https://dev.twitter.com/oauth/overview/percent-encoding-parameters
+        return alphaNumericSet
+    }
+}
