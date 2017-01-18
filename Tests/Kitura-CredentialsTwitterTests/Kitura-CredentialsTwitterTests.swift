@@ -70,9 +70,9 @@ var parametersForAuth: [String: String] = {
 public class CredentialsTwitterTests: XCTestCase {
     public func testSecretStringForRequest() {
         let signature = String.oAuthSignature(fromMethod: "POST",
-                                              url: "https://api.twitter.com/oauth/request_token",
+                                              urlString: "https://api.twitter.com/oauth/request_token",
                                               parameters: parametersForRequest,
-                                              with: consumerSecret)
+                                              consumerSecret: consumerSecret)
         XCTAssertNotNil(signature)
         XCTAssertEqual(signature, "AtzhrRroa4Z41uZF8aIfMebd26g%3D")
     }
@@ -80,9 +80,9 @@ public class CredentialsTwitterTests: XCTestCase {
     public func testOAuthAuthorizationStringForRequest() {
         var parameters = parametersForRequest
         let signature = String.oAuthSignature(fromMethod: "POST",
-                                              url: "https://api.twitter.com/oauth/request_token",
+                                              urlString: "https://api.twitter.com/oauth/request_token",
                                               parameters: parameters,
-                                              with: consumerSecret)
+                                              consumerSecret: consumerSecret)
         parameters["oauth_signature"] = signature
 
         let oAuthAuthorizationHeaderString = String.oAuthAuthorizationString(fromParameters: parameters)
@@ -92,9 +92,9 @@ public class CredentialsTwitterTests: XCTestCase {
     public func testSecretStringForAuth() {
         let url = "https://api.twitter.com/oauth/access_token?oauth_verifier=\(oAuthTokenVerifier)"
         let signature = String.oAuthSignature(fromMethod: "POST",
-                                              url: url,
+                                              urlString: url,
                                               parameters: parametersForAuth,
-                                              with: consumerSecret,
+                                              consumerSecret: consumerSecret,
                                               oAuthToken: oAuthTokenSecret)
         XCTAssertNotNil(signature)
         XCTAssertEqual(signature, "OXH4boFCnH6sQXFCOTxC3SUCUVc%3D")
@@ -104,9 +104,9 @@ public class CredentialsTwitterTests: XCTestCase {
         var parameters = parametersForAuth
         let url = "https://api.twitter.com/oauth/access_token?oauth_verifier=\(oAuthTokenVerifier)"
         let signature = String.oAuthSignature(fromMethod: "POST",
-                                              url: url,
+                                              urlString: url,
                                               parameters: parameters,
-                                              with: consumerSecret,
+                                              consumerSecret: consumerSecret,
                                               oAuthToken: oAuthTokenSecret)
         parameters["oauth_signature"] = signature
 

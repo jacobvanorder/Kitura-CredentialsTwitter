@@ -27,24 +27,15 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
 
     let consumerKey: String
     let consumerSecret: String
-    let callbackUrl: String
-    let options: [String: Any]?
 
     private var oAuthToken: String = ""
     private var oAuthTokenSecret: String = ""
     private var oAuthTokenVerifier: String = ""
 
-    //consumerKey
-    //consumerSecret
-
     public init(consumerKey: String,
-                consumerSecret: String,
-                callbackUrl: String,
-                options: [String: Any]?=nil) {
+                consumerSecret: String) {
         self.consumerKey = consumerKey
         self.consumerSecret = consumerSecret
-        self.callbackUrl = callbackUrl
-        self.options = options
     }
 
     /// CredentialsPluginProtocol
@@ -87,20 +78,15 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
             let newOAuthToken = request.queryParameters["oauth_token"],
             newOAuthToken == oAuthToken {
             oAuthTokenVerifier = verifier
-            twitterAccessTokenRequest(verifier: verifier,
-                                      request: request,
+            twitterAccessTokenRequest(request: request,
                                       response: response,
-                                      options: options,
                                       onSuccess: onSuccess,
                                       onFailure: onFailure,
-                                      onPass: onPass,
-                                      inProgress: inProgress)
+                                      onPass: onPass)
         }
         else {
             twitterTokenRequest(request: request,
                                 response: response,
-                                options: options,
-                                onSuccess: onSuccess,
                                 onFailure: onFailure,
                                 onPass: onPass,
                                 inProgress: inProgress)
@@ -108,8 +94,8 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
     }
 
     //MARK: Step 1: Obtaining a request token
-    func twitterTokenRequest(request: RouterRequest, response: RouterResponse,
-                             options: [String:Any], onSuccess: @escaping (UserProfile) -> Void,
+    func twitterTokenRequest(request: RouterRequest,
+                             response: RouterResponse,
                              onFailure: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
                              onPass: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
                              inProgress: @escaping () -> Void) {
@@ -131,9 +117,9 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
         parameters["oauth_version"] = "1.0"
 
         guard let signature = String.oAuthSignature(fromMethod: "POST",
-                                                    url: "https://api.twitter.com/oauth/request_token",
+                                                    urlString: "https://api.twitter.com/oauth/request_token",
                                                     parameters: parameters,
-                                                    with: consumerSecret) else {
+                                                    consumerSecret: consumerSecret) else {
                                                         onFailure(nil, nil)
                                                         return
         }
@@ -154,11 +140,21 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
             do {
                 try tokenResponse.readAllData(into: &body)
                 let string = String(data: body, encoding: String.Encoding.utf8)
-                let fields = string?.components(separatedBy: "&")
+                guard let fields = string?.components(separatedBy: "&") else {
+                    onPass(tokenResponse.statusCode, .none)
+                    return
+                }
                 var responseDictionary = [String: String]()
-                for field in fields! {
+                for field in fields {
                     let keyValue = field.components(separatedBy: "=")
-                    responseDictionary[keyValue.first!] = keyValue.last!
+                    if let key = keyValue.first,
+                        let value = keyValue.last {
+                        responseDictionary[key] = value
+                    }
+                    else {
+                        onPass(tokenResponse.statusCode, .none)
+                        return
+                    }
                 }
 
                 guard let token = responseDictionary["oauth_token"],
@@ -170,13 +166,9 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
                 self.oAuthToken = token
                 self.oAuthTokenSecret = secret
 
-                self.twitterRedirect(token: self.oAuthToken,
-                                     request: request,
+                self.twitterRedirect(request: request,
                                      response: response,
-                                     options: options,
-                                     onSuccess: onSuccess,
                                      onFailure: onFailure,
-                                     onPass: onPass,
                                      inProgress: inProgress)
             }
             catch {
@@ -188,16 +180,12 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
     }
 
     //MARK: Step 2: Redirecting the user
-    func twitterRedirect(token: String,
-                         request: RouterRequest,
+    func twitterRedirect(request: RouterRequest,
                          response: RouterResponse,
-                         options: [String:Any],
-                         onSuccess: @escaping (UserProfile) -> Void,
                          onFailure: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
-                         onPass: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
                          inProgress: @escaping () -> Void) {
         do {
-            _ = try response.redirect("https://api.twitter.com/oauth/authenticate?oauth_token=\(token)")
+            _ = try response.redirect("https://api.twitter.com/oauth/authenticate?oauth_token=\(oAuthToken)")
             inProgress()
         }
         catch {
@@ -207,14 +195,11 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
     }
 
     //MARK: Step 3: Step 3: Converting the request token to an access token
-    func twitterAccessTokenRequest(verifier: String,
-                                   request: RouterRequest,
+    func twitterAccessTokenRequest(request: RouterRequest,
                                    response: RouterResponse,
-                                   options: [String:Any],
                                    onSuccess: @escaping (UserProfile) -> Void,
                                    onFailure: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
-                                   onPass: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
-                                   inProgress: @escaping () -> Void) {
+                                   onPass: @escaping (HTTPStatusCode?, [String:String]?) -> Void) {
         var requestOptions: [ClientRequest.Options] = []
         requestOptions.append(.schema("https://"))
         requestOptions.append(.hostname("api.twitter.com"))
@@ -236,9 +221,9 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
 
         let url = "https://api.twitter.com/oauth/access_token?oauth_verifier=\(oAuthTokenVerifier)"
         guard let signature = String.oAuthSignature(fromMethod: "POST",
-                                                    url: url,
+                                                    urlString: url,
                                                     parameters: parameters,
-                                                    with: consumerSecret,
+                                                    consumerSecret: consumerSecret,
                                                     oAuthToken: oAuthTokenSecret) else {
                                                         onFailure(nil, nil)
                                                         return
@@ -262,10 +247,21 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
                 let string = String(data: body, encoding: .utf8)
 
                 var responseDictionary = [String: String]()
-                let fields = string?.components(separatedBy: "&")
-                for field in fields! {
+                guard let fields = string?.components(separatedBy: "&") else {
+                    onPass(accessTokenResponse.statusCode, .none)
+                    return
+                }
+
+                for field in fields {
                     let keyValue = field.components(separatedBy: "=")
-                    responseDictionary[keyValue.first!] = keyValue.last!
+                    if let key = keyValue.first,
+                        let value = keyValue.last {
+                        responseDictionary[key] = value
+                    }
+                    else {
+                        onPass(accessTokenResponse.statusCode, .none)
+                        return
+                    }
                 }
 
                 guard let id = responseDictionary["user_id"],

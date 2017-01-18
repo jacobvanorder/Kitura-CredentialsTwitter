@@ -32,14 +32,18 @@ public extension String {
     }
     
     //https://dev.twitter.com/oauth/overview/creating-signatures
-    static func oAuthSignature(fromMethod method: String, url: String, parameters: [String:String], with consumerSecret: String, oAuthToken: String = "") -> String? {
+    static func oAuthSignature(fromMethod method: String,
+                               urlString: String,
+                               parameters: [String:String],
+                            consumerSecret: String,
+                               oAuthToken: String = "") -> String? {
         var keyValues = [String]()
         for (key, value) in parameters {
             keyValues.append("\(key)=\(value.addingPercentEncoding(withAllowedCharacters: .twitterParameterStringSet)!)")
         }
         let sortedParameters = keyValues.sorted(by: {$0 < $1})
         let joinedParameters = sortedParameters.joined(separator: "&")
-        guard let percentEncodedUrl = url.addingPercentEncoding(withAllowedCharacters: .twitterParameterStringSet),
+        guard let percentEncodedUrl = urlString.addingPercentEncoding(withAllowedCharacters: .twitterParameterStringSet),
             let percentEncodedJoinedParameters = joinedParameters.addingPercentEncoding(withAllowedCharacters: .twitterParameterStringSet),
             let percentEncodedConsumerSecret = consumerSecret.addingPercentEncoding(withAllowedCharacters: .twitterParameterStringSet) else {
                 return nil
