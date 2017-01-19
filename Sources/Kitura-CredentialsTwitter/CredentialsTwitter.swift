@@ -23,15 +23,31 @@ import SwiftyJSON
 
 import Foundation
 
+
+/// CredentialsTwitter is a plugin for the Credentials framework that authenticate using Twitter. This plugin uses
+/// Twitter's [“Sign in with Twitter”](https://dev.twitter.com/web/sign-in/implementing) use case. Roughly, there are
+/// three steps to this process: obtaining a request token, redirecting the user, and converting the request token to
+/// an access token. These three steps are marked down below. The goal of this process is create a UserProfile to give 
+/// back to Credentials.
+
 public class CredentialsTwitter: CredentialsPluginProtocol {
 
+    /// You must register an app at https://apps.twitter.com in order to get the consumer key.
     let consumerKey: String
+    
+    /// You must register an app at https://apps.twitter.com in order to get the consumer secret.
     let consumerSecret: String
 
     private var oAuthToken: String = ""
     private var oAuthTokenSecret: String = ""
     private var oAuthTokenVerifier: String = ""
 
+    
+    /// Initialization method used to gather the consumer key and consumer secret used by Twitter.
+    ///
+    /// - Parameters:
+    ///   - consumerKey: The consumer key gathered from https://apps.twitter.com for your application.
+    ///   - consumerSecret: The consumer secret gathered from https://apps.twitter.com for your application.
     public init(consumerKey: String,
                 consumerSecret: String) {
         self.consumerKey = consumerKey
@@ -69,11 +85,15 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
     ///                     authentication data (usually an authentication token) in the request.
     /// - Parameter inProgress: The closure to invoke to cause a redirect to the login page in the
     ///                     case of redirecting authentication.
-    public func authenticate (request: RouterRequest, response: RouterResponse,
-                              options: [String:Any], onSuccess: @escaping (UserProfile) -> Void,
+    public func authenticate (request: RouterRequest,
+                              response: RouterResponse,
+                              options: [String:Any],
+                              onSuccess: @escaping (UserProfile) -> Void,
                               onFailure: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
                               onPass: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
                               inProgress: @escaping () -> Void) {
+        // If Step 2, is accomplished, the query will have `oauth_verifier` and `oauth_token`. The oauth_token should
+        // match the oAuthToken you got during Step 1.
         if let verifier = request.queryParameters["oauth_verifier"],
             let newOAuthToken = request.queryParameters["oauth_token"],
             newOAuthToken == oAuthToken {
@@ -84,7 +104,7 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
                                       onFailure: onFailure,
                                       onPass: onPass)
         }
-        else {
+        else { // Start with Step 1.
             twitterTokenRequest(request: request,
                                 response: response,
                                 onFailure: onFailure,
@@ -94,6 +114,19 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
     }
 
     //MARK: Step 1: Obtaining a request token
+    
+    /// The method gathers the necessary components to create a request to https://api.twitter.com/oauth/request_token. 
+    /// If the request is successful, it will move on to Step 2 which redirects the user. Failure or incorrect payloads
+    /// call `onFailure` or `onPass`, respectively.
+    ///
+    /// - Parameters:
+    ///   - request: The `RouterRequest` object used to get information about the request.
+    ///   - response: The `RouterResponse` object used to respond to the request.
+    ///   - onFailure: The closure to invoke in the case of an authentication failure.
+    ///   - onPass: The closure to invoke when the plugin doesn't recognize the authentication data (usually an
+    ///       authentication token) in the request.
+    ///   - inProgress: The closure to invoke to cause a redirect to the login page in the case of redirecting
+    ///       authentication.
     func twitterTokenRequest(request: RouterRequest,
                              response: RouterResponse,
                              onFailure: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
@@ -180,6 +213,17 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
     }
 
     //MARK: Step 2: Redirecting the user
+    
+    /// This method uses the RouterResponse to redirect the user to https://api.twitter.com/oauth/authenticate. It adds
+    /// a query using the OAuth Token obtained during Step 1. The result of this action will loop back to `func
+    /// authenticate(request, response, options, onSuccess, onFailure, onPass, inProgress)`.
+    ///
+    /// - Parameters:
+    /// - request: The `RouterRequest` object used to get information about the request.
+    /// - response: The `RouterResponse` object used to respond to the request.
+    /// - onFailure: The closure to invoke in the case of an authentication failure.
+    /// - inProgress: The closure to invoke to cause a redirect to the login page in the case of redirecting
+    ///       authentication.
     func twitterRedirect(request: RouterRequest,
                          response: RouterResponse,
                          onFailure: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
@@ -194,7 +238,20 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
         }
     }
 
-    //MARK: Step 3: Step 3: Converting the request token to an access token
+    //MARK: Step 3: Converting the request token to an access token
+    
+    
+    /// The method gathers the necessary components to create a request to https://api.twitter.com/oauth/access_token.
+    /// At this point, a valid oAuth Token, oAuth Secret, and oAuth Verifier, gathered during Steps 1 and 2 should be 
+    /// valid. If the request is successful, it will move on to Step 2 which redirects the user. Failure or incorrect 
+    /// payloads call `onFailure` or `onPass`, respectively.
+    /// - Parameters:
+    ///   - request: The `RouterRequest` object used to get information about the request.
+    ///   - response: The `RouterResponse` object used to respond to the request.
+    ///   - onSuccess: The closure to invoke in the case of successful authentication.
+    ///   - onFailure: The closure to invoke in the case of an authentication failure.
+    ///   - onPass: The closure to invoke when the plugin doesn't recognize the authentication data (usually an
+    ///       authentication token) in the request.
     func twitterAccessTokenRequest(request: RouterRequest,
                                    response: RouterResponse,
                                    onSuccess: @escaping (UserProfile) -> Void,

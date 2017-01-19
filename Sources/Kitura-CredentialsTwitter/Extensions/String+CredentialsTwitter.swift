@@ -31,17 +31,33 @@ public extension String {
         return "OAuth " + keyValues.sorted().joined(separator: ",")
     }
     
-    //https://dev.twitter.com/oauth/overview/creating-signatures
+    /// Twitter OAuth requires that within the OAuth string, an entry for the oauth_signature is entered.
+    /// This signature is comprised of a base string that is the HTTP method (e.g., POST, GET, etc…), the
+    /// percent-encoded URL of the destination, and the parameters which are joined by an equals and chained
+    /// together with an ampersand which is finally percent encoded. This base string is then encoded by a
+    /// string comprised of the percent-encoded consumer secret (found on your Twitter application's page), an
+    /// ampersand, and your oAuth Token. If you don't have an oAuth Token at this point, you still need the
+    /// joining ampersand but followed by a blank. These two strings are encoded using HMAC-SHA1. The return
+    /// value is that data transformed into a base 64-encoded string which is percent-encoded itself. Simple!
+    /// For more info: https://dev.twitter.com/oauth/overview/creating-signatures
+    ///
+    /// - Parameters:
+    ///   - method: The HTTP method for the resulting call you intend to make.
+    ///   - urlString: The URL of the resulting call you intend to make.
+    ///   - parameters: The OAuth and non-OAuth parameters you intend to send in the resulting call.
+    ///   - consumerSecret: The consumer secret you get from Twitter on your application's page.
+    ///   - oAuthToken: The optional OAuth Token you received in previous calls.
+    /// - Returns: A percent-encoded string which will be added as a parameter as `oauth_signature`.
     static func oAuthSignature(fromMethod method: String,
                                urlString: String,
                                parameters: [String:String],
-                            consumerSecret: String,
+                               consumerSecret: String,
                                oAuthToken: String = "") -> String? {
         var keyValues = [String]()
         for (key, value) in parameters {
             keyValues.append("\(key)=\(value.addingPercentEncoding(withAllowedCharacters: .twitterParameterStringSet)!)")
         }
-        let sortedParameters = keyValues.sorted(by: {$0 < $1})
+        let sortedParameters = keyValues.sorted(by: <)
         let joinedParameters = sortedParameters.joined(separator: "&")
         guard let percentEncodedUrl = urlString.addingPercentEncoding(withAllowedCharacters: .twitterParameterStringSet),
             let percentEncodedJoinedParameters = joinedParameters.addingPercentEncoding(withAllowedCharacters: .twitterParameterStringSet),

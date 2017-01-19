@@ -17,6 +17,8 @@
 import Foundation
 
 public extension TimeInterval {
+    
+    /// Used for the OAuth Timestamp
     var roundedString: String {
         return String(Int(self))
     }
