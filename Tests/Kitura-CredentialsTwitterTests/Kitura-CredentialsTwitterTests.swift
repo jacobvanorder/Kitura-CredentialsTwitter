@@ -23,36 +23,19 @@ var oAuthToken = "z1obMQAAAFAAynC1AAABWaLpD3U"
 var oAuthTokenSecret = "g5qyyHw7txbYaLWZpFgl77wEtjHohgRf"
 var oAuthTokenVerifier = "3lEFtnq9wzKavfSYSnPyntsLOk8FpOkE"
 
-var parametersForRequest: [String: String] = {
-    var parameters = [String:String]()
+var parametersForRequest: [String : String] = ["oauth_consumer_key" : consumerKey,
+                                               "oauth_nonce" : "HEYTHEREBL1MPYBOY",
+                                               "oauth_signature_method" : "HMAC-SHA1",
+                                               "oauth_timestamp" : "1484496492",
+                                               "oauth_version" : "1.0"]
 
-    let nonce = "HEYTHEREBL1MPYBOY"
-    let timeStamp = "1484496492"
-
-    parameters["oauth_consumer_key"] = consumerKey
-    parameters["oauth_signature_method"] = "HMAC-SHA1"
-    parameters["oauth_timestamp"] = timeStamp
-    parameters["oauth_nonce"] = nonce
-    parameters["oauth_version"] = "1.0"
-    return parameters
-}()
-
-var parametersForAuth: [String: String] = {
-    var parameters = [String:String]()
-
-    let nonce = "FLY1NGTHROUGHTHESKYSOFANCYFREE"
-    let timeStamp = "1484496900"
-
-    parameters["oauth_consumer_key"] = consumerKey
-    parameters["oauth_nonce"] = nonce
-    parameters["oauth_signature_method"] = "HMAC-SHA1"
-    parameters["oauth_timestamp"] = timeStamp
-    parameters["oauth_token"] = oAuthToken
-    parameters["oauth_version"] = "1.0"
-    parameters["oauth_verifier"] = oAuthTokenVerifier
-
-    return parameters
-}()
+var parametersForAuth: [String : String] = ["oauth_consumer_key" : consumerKey,
+                                            "oauth_nonce" : "FLY1NGTHROUGHTHESKYSOFANCYFREE",
+                                            "oauth_signature_method" : "HMAC-SHA1",
+                                            "oauth_timestamp" : "1484496900",
+                                            "oauth_token":  oAuthToken,
+                                            "oauth_version" : "1.0",
+                                            "oauth_verifier" : oAuthTokenVerifier]
 
 #if os(Linux)
     extension CredentialsTwitterTests {
@@ -73,7 +56,6 @@ public class CredentialsTwitterTests: XCTestCase {
                                               urlString: "https://api.twitter.com/oauth/request_token",
                                               parameters: parametersForRequest,
                                               consumerSecret: consumerSecret)
-        XCTAssertNotNil(signature)
         XCTAssertEqual(signature, "AtzhrRroa4Z41uZF8aIfMebd26g%3D")
     }
 
@@ -96,7 +78,6 @@ public class CredentialsTwitterTests: XCTestCase {
                                               parameters: parametersForAuth,
                                               consumerSecret: consumerSecret,
                                               oAuthToken: oAuthTokenSecret)
-        XCTAssertNotNil(signature)
         XCTAssertEqual(signature, "OXH4boFCnH6sQXFCOTxC3SUCUVc%3D")
     }
 

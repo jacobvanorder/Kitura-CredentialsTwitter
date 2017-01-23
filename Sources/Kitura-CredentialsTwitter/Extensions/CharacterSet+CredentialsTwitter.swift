@@ -16,8 +16,8 @@
 
 import Foundation
 
-public extension CharacterSet {
-    static var twitterParameterStringSet: CharacterSet {
+internal extension CharacterSet {
+    static var twitterQueryAllowed: CharacterSet {
         var alphaNumericSet: CharacterSet = .alphanumerics
         alphaNumericSet.insert(charactersIn: "_-.~") //https://dev.twitter.com/oauth/overview/percent-encoding-parameters
         return alphaNumericSet

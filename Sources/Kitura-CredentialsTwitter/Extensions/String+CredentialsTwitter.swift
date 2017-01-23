@@ -18,12 +18,12 @@ import Foundation
 
 import Cryptor
 
-public extension String {
+internal extension String {
     static var nonce: String {
         return UUID().uuidString.components(separatedBy: "-").first!
     }
     
-    static func oAuthAuthorizationString(fromParameters parameters: [String: String]) -> String {
+    static func oAuthAuthorizationString(fromParameters parameters: [String : String]) -> String {
         var keyValues = [String]()
         for (key, value) in parameters {
             keyValues.append("\(key)=\"\(value)\"")
@@ -50,18 +50,18 @@ public extension String {
     /// - Returns: A percent-encoded string which will be added as a parameter as `oauth_signature`.
     static func oAuthSignature(fromMethod method: String,
                                urlString: String,
-                               parameters: [String:String],
+                               parameters: [String : String],
                                consumerSecret: String,
                                oAuthToken: String = "") -> String? {
         var keyValues = [String]()
         for (key, value) in parameters {
-            keyValues.append("\(key)=\(value.addingPercentEncoding(withAllowedCharacters: .twitterParameterStringSet)!)")
+            keyValues.append("\(key)=\(value.addingPercentEncoding(withAllowedCharacters: .twitterQueryAllowed)!)")
         }
         let sortedParameters = keyValues.sorted(by: <)
         let joinedParameters = sortedParameters.joined(separator: "&")
-        guard let percentEncodedUrl = urlString.addingPercentEncoding(withAllowedCharacters: .twitterParameterStringSet),
-            let percentEncodedJoinedParameters = joinedParameters.addingPercentEncoding(withAllowedCharacters: .twitterParameterStringSet),
-            let percentEncodedConsumerSecret = consumerSecret.addingPercentEncoding(withAllowedCharacters: .twitterParameterStringSet) else {
+        guard let percentEncodedUrl = urlString.addingPercentEncoding(withAllowedCharacters: .twitterQueryAllowed),
+            let percentEncodedJoinedParameters = joinedParameters.addingPercentEncoding(withAllowedCharacters: .twitterQueryAllowed),
+            let percentEncodedConsumerSecret = consumerSecret.addingPercentEncoding(withAllowedCharacters: .twitterQueryAllowed) else {
                 return nil
         }
         
@@ -72,6 +72,6 @@ public extension String {
         let encodedRawBytes = encryptedKey.final()
         let encodedData = Data(bytes: encodedRawBytes)
         let encodedString = encodedData.base64EncodedString()
-        return encodedString.addingPercentEncoding(withAllowedCharacters: .twitterParameterStringSet)!
+        return encodedString.addingPercentEncoding(withAllowedCharacters: .twitterQueryAllowed)!
     }
 }
