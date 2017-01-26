@@ -11,7 +11,7 @@ Plugins for [Kitura-Credentials](https://github.com/IBM-Swift/Kitura-Credentials
 
 ## Swift Version
 
-This requires a version of Swift 3.0 and above. You can download this version of the Swift binaries by following this [link](https://swift.org/download/).
+This requires Swift 3.0 and above. You can download this version of the Swift binaries by following this [link](https://swift.org/download/).
 
 ## Before You Start
 

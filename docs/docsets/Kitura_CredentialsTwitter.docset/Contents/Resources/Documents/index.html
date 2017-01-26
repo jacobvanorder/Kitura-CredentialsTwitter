@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Kitura_CredentialsTwitter  Reference</title>
+    <link rel="stylesheet" type="text/css" href="css/jazzy.css" />
+    <link rel="stylesheet" type="text/css" href="css/highlight.css" />
+    <meta charset="utf-8">
+    <script src="js/jquery.min.js" defer></script>
+    <script src="js/jazzy.js" defer></script>
+    
+  </head>
+  <body>
+
+
+    <a title="Kitura_CredentialsTwitter  Reference"></a>
+
+    <header class="header">
+      <p class="header-col header-col--primary">
+        <a class="header-link" href="index.html">
+          Kitura_CredentialsTwitter Docs
+        </a>
+         (100% documented)
+      </p>
+    
+        <p class="header-col header-col--secondary">
+          <a class="header-link" href="https://github.com/jacobvanorder/Kitura-CredentialsTwitter/">
+            <img class="header-icon" src="img/gh.png"/>
+            View on GitHub
+          </a>
+        </p>
+    
+    </header>
+
+    <p class="breadcrumbs">
+      <a class="breadcrumb" href="index.html">Kitura_CredentialsTwitter Reference</a>
+      <img class="carat" src="img/carat.png" />
+      Kitura_CredentialsTwitter  Reference
+    </p>
+
+    <div class="content-wrapper">
+      <nav class="navigation">
+        <ul class="nav-groups">
+          <li class="nav-group-name">
+            <a class="nav-group-name-link" href="Classes.html">Classes</a>
+            <ul class="nav-group-tasks">
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="Classes/CredentialsTwitter.html">CredentialsTwitter</a>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </nav>
+      <article class="main-content">
+
+        <section class="section">
+          <div class="section-content">
+            
+            <a href='#kitura-credentialstwitter' class='anchor' aria-hidden=true><span class="header-anchor"></span></a><h1 id='kitura-credentialstwitter'>Kitura-CredentialsTwitter</h1>
+
+<p>A plugin for the Kitura-Credentials framework that authenticates using the Twitter OAuth web login</p>
+
+<p><img src="https://img.shields.io/badge/os-Mac%20OS%20X-green.svg?style=flat" alt="Mac OS X">
+<img src="https://img.shields.io/badge/os-linux-green.svg?style=flat" alt="Linux">
+<img src="https://img.shields.io/badge/license-Apache2-blue.svg?style=flat" alt="Apache 2"></p>
+<a href='#summary' class='anchor' aria-hidden=true><span class="header-anchor"></span></a><h2 id='summary'>Summary</h2>
+
+<p>Plugins for <a href="https://github.com/IBM-Swift/Kitura-Credentials">Kitura-Credentials</a> framework that authenticate using the <a href="https://dev.twitter.com/web/sign-in/implementing">Twitter&rsquo;s “Sign In with Twitter” </a>.</p>
+<a href='#swift-version' class='anchor' aria-hidden=true><span class="header-anchor"></span></a><h2 id='swift-version'>Swift Version</h2>
+
+<p>This requires Swift 3.0 and above. You can download this version of the Swift binaries by following this <a href="https://swift.org/download/">link</a>.</p>
+<a href='#before-you-start' class='anchor' aria-hidden=true><span class="header-anchor"></span></a><h2 id='before-you-start'>Before You Start</h2>
+
+<p>Head on over to <a href="https://apps.twitter.com">Twitter&rsquo;s Application Management</a> page and register an application you&rsquo;ll be using Kitura for. You&rsquo;ll need to give a website (which can be fake for now) and a callback URL which you&rsquo;ll be using during these instructions. For instance: <code>http://localhost:8090/login/twitter/callback</code>.</p>
+
+<p>After you create the application on Twitter, gather the Consumer Key and Consumer Secret from your application&rsquo;s Keys and Access Tokens page.</p>
+<a href='#example-of-twitter-web-login' class='anchor' aria-hidden=true><span class="header-anchor"></span></a><h2 id='example-of-twitter-web-login'>Example of Twitter Web Login</h2>
+
+<p><em>Note: for more detailed instructions, please refer to <a href="https://github.com/IBM-Swift/Kitura-Credentials-Sample">Kitura-Credentials-Sample</a>.</em></p>
+
+<p>First, set up the session:</p>
+<pre class="highlight swift"><code><span class="kd">import</span> <span class="kt">KituraSession</span>
+
+<span class="n">router</span><span class="o">.</span><span class="nf">all</span><span class="p">(</span><span class="nv">middleware</span><span class="p">:</span> <span class="kt">Session</span><span class="p">(</span><span class="nv">secret</span><span class="p">:</span> <span class="s">"Some random string"</span><span class="p">))</span>
+</code></pre>
+
+<p>Create an instance of <code>CredentialsTwitter</code> plugin and register it with <code>Credentials</code> framework:</p>
+<pre class="highlight swift"><code><span class="kd">import</span> <span class="kt">Credentials</span>
+<span class="kd">import</span> <span class="kt">Kitura_CredentialsTwitter</span>
+
+<span class="k">let</span> <span class="nv">credentials</span> <span class="o">=</span> <span class="kt">Credentials</span><span class="p">()</span>
+<span class="k">let</span> <span class="nv">twitter</span> <span class="o">=</span> <span class="kt">CredentialsTwitter</span><span class="p">(</span><span class="nv">consumerKey</span><span class="p">:</span> <span class="n">twitterConsumerKey</span><span class="p">,</span>
+                                 <span class="nv">consumerSecret</span><span class="p">:</span> <span class="n">twitterConsumerSecret</span><span class="p">)</span>
+<span class="n">credentials</span><span class="o">.</span><span class="nf">register</span><span class="p">(</span><span class="n">twitter</span><span class="p">)</span>
+</code></pre>
+
+<p><strong>Where:</strong>
+   - <em>twitterConsumerKey</em> is the Consumer Key of your app in the Twitter Application Portal
+   - <em>twitterConsumerSecret</em> is the Consumer Secret of your app in the Twitter Application Portal</p>
+
+<p><strong>Note:</strong> Twitter has you specify your callback URL on your application&rsquo;s detail page of the Twitter Application Portal.</p>
+
+<p>Specify where to redirect non-authenticated requests:
+<code>swift
+   credentials.options[&quot;failureRedirect&quot;] = &quot;/login/twitter&quot;
+</code></p>
+
+<p>Connect <code>credentials</code> middleware to requests to <code>/private</code>:</p>
+<pre class="highlight swift"><code><span class="n">router</span><span class="o">.</span><span class="nf">all</span><span class="p">(</span><span class="s">"/private"</span><span class="p">,</span> <span class="nv">middleware</span><span class="p">:</span> <span class="n">credentials</span><span class="p">)</span>
+<span class="n">router</span><span class="o">.</span><span class="nf">get</span><span class="p">(</span><span class="s">"/private/data"</span><span class="p">,</span> <span class="nv">handler</span><span class="p">:</span>
+    <span class="p">{</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="n">next</span> <span class="k">in</span>
+        <span class="o">...</span>  
+        <span class="nf">next</span><span class="p">()</span>
+<span class="p">})</span>
+</code></pre>
+
+<p>And call <code>authenticate</code> to login with Twitter and to handle the redirect (callback) from the Twitter login web page after a successful login:</p>
+<pre class="highlight swift"><code><span class="n">router</span><span class="o">.</span><span class="nf">get</span><span class="p">(</span><span class="s">"/login/twitter"</span><span class="p">,</span>
+           <span class="nv">handler</span><span class="p">:</span> <span class="n">credentials</span><span class="o">.</span><span class="nf">authenticate</span><span class="p">(</span><span class="n">twitter</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+
+<span class="n">router</span><span class="o">.</span><span class="nf">get</span><span class="p">(</span><span class="s">"/login/twitter/callback"</span><span class="p">,</span>
+           <span class="nv">handler</span><span class="p">:</span> <span class="n">credentials</span><span class="o">.</span><span class="nf">authenticate</span><span class="p">(</span><span class="n">twitter</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+</code></pre>
+<a href='#license' class='anchor' aria-hidden=true><span class="header-anchor"></span></a><h2 id='license'>License</h2>
+
+<p>This library is licensed under Apache 2.0. Full license text is available in <a href="LICENSE.txt">LICENSE</a>.</p>
+
+          </div>
+        </section>
+
+
+      </article>
+    </div>
+    <section class="footer">
+      <p>&copy; 2017 <a class="link" href="" target="_blank" rel="external">Jacob Van Order</a>. All rights reserved. (Last updated: 2017-01-25)</p>
+      <p>Generated by <a class="link" href="https://github.com/realm/jazzy" target="_blank" rel="external">jazzy ♪♫ v0.7.3</a>, a <a class="link" href="http://realm.io" target="_blank" rel="external">Realm</a> project.</p>
+    </section>
+  </body>
+</div>
+</html>
