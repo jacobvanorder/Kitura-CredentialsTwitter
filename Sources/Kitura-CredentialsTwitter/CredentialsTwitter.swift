@@ -23,12 +23,6 @@ import SwiftyJSON
 
 import Foundation
 
-let oAuthTokenKey = "oauth_token"
-let oAuthTokenSecretKey = "oauth_token_secret"
-let oAuthVerifierKey = "oauth_verifier"
-let userIDKey = "user_id"
-let screenNameKey = "screen_name"
-
 /// CredentialsTwitter is a plugin for the Credentials framework that authenticate using Twitter. This plugin uses
 /// Twitter's [“Sign in with Twitter”](https://dev.twitter.com/web/sign-in/implementing) use case. Roughly, there are
 /// three steps to this process: obtaining a request token, redirecting the user, and converting the request token to
@@ -36,6 +30,13 @@ let screenNameKey = "screen_name"
 /// back to Credentials.
 
 public class CredentialsTwitter: CredentialsPluginProtocol {
+    
+    //Twitter Response Keys
+    let oAuthTokenKey = "oauth_token"
+    let oAuthTokenSecretKey = "oauth_token_secret"
+    let oAuthVerifierKey = "oauth_verifier"
+    let userIDKey = "user_id"
+    let screenNameKey = "screen_name"
     
     /// You must register an app at https://apps.twitter.com in order to get the consumer key.
     let consumerKey: String
@@ -58,7 +59,7 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
         self.consumerSecret = consumerSecret
     }
     
-    /// CredentialsPluginProtocol
+    // CredentialsPluginProtocol
     
     /// The name of the plugin.
     public var name: String {
@@ -133,19 +134,19 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
     ///   - inProgress: The closure to invoke to cause a redirect to the login page in the case of redirecting
     ///       authentication.
     private func tokenRequest(request: RouterRequest,
-                      response: RouterResponse,
-                      onFailure: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
-                      onPass: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
-                      inProgress: @escaping () -> Void) {
+                              response: RouterResponse,
+                              onFailure: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
+                              onPass: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
+                              inProgress: @escaping () -> Void) {
         var requestOptions: [ClientRequest.Options] = [.schema("https://"),
                                                        .hostname("api.twitter.com"),
                                                        .method("POST"),
                                                        .path("oauth/request_token")]
         var headers = [String : String]()
-
+        
         let nonce = String.nonce
         let timeStamp = Date().timeIntervalSince1970.roundedString
-
+        
         var parameters = ["oauth_consumer_key" : consumerKey,
                           "oauth_signature_method" : "HMAC-SHA1",
                           "oauth_timestamp" : timeStamp,
@@ -176,41 +177,41 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
             var body = Data()
             do {
                 try tokenResponse.readAllData(into: &body)
-                let string = String(data: body, encoding: String.Encoding.utf8)
-                guard let fields = string?.components(separatedBy: "&") else {
-                    Log.error("Twitter token response not correct format: \(string)")
-                    onPass(tokenResponse.statusCode, .none)
-                    return
-                }
-                var responseDictionary = [String : String]()
-                for field in fields {
-                    let keyValue = field.components(separatedBy: "=")
-                    if let key = keyValue.first,
-                        let value = keyValue.last {
-                        responseDictionary[key] = value
+                do {
+                    let responseDictionary = try body.twitterResponseDictionary()
+                    
+                    guard let token = responseDictionary[self.oAuthTokenKey],
+                        let secret = responseDictionary[self.oAuthTokenSecretKey] else {
+                            Log.error("Twitter token response did not contain oauth_token or oauth_token_secret.")
+                            onPass(tokenResponse.statusCode, .none)
+                            return
                     }
-                    else {
-                        Log.error("Twitter token response not correct format: \(string)")
-                        onPass(tokenResponse.statusCode, .none)
-                        return
-                    }
+                    
+                    self.oAuthToken = token
+                    self.oAuthTokenSecret = secret
+                    
+                    //Go to Step 2
+                    self.authorizationRedirect(request: request,
+                                               response: response,
+                                               onFailure: onFailure,
+                                               inProgress: inProgress)
                 }
-                
-                guard let token = responseDictionary["oauth_token"],
-                    let secret = responseDictionary["oauth_token_secret"] else {
-                        Log.error("Twitter token response did not contain oauth_token or oauth_token_secret.")
-                        onPass(tokenResponse.statusCode, .none)
-                        return
+                catch TwitterResponseError.dataNotString {
+                    Log.error("Twitter token response body data could not be converted to String.")
+                    onPass(optionalResponse?.statusCode, nil)
                 }
-                
-                self.oAuthToken = token
-                self.oAuthTokenSecret = secret
-                
-                //Go to Step 2
-                self.authorizationRedirect(request: request,
-                                           response: response,
-                                           onFailure: onFailure,
-                                           inProgress: inProgress)
+                catch TwitterResponseError.noQueryComponents(let string) {
+                    Log.error("Twitter token response body did not have query components. String: \(string)")
+                    onPass(optionalResponse?.statusCode, nil)
+                }
+                catch TwitterResponseError.noKeyValuePairs(let string) {
+                    Log.error("Twitter token response body did not have keys or values. String: \(string)")
+                    onPass(optionalResponse?.statusCode, nil)
+                }
+                catch {
+                    Log.error("Twitter token response body data not valid.")
+                    onPass(optionalResponse?.statusCode, nil)
+                }
             }
             catch {
                 Log.error("Twitter token response could not read body data.")
@@ -234,9 +235,9 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
     /// - inProgress: The closure to invoke to cause a redirect to the login page in the case of redirecting
     ///       authentication.
     private func authorizationRedirect(request: RouterRequest,
-                               response: RouterResponse,
-                               onFailure: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
-                               inProgress: @escaping () -> Void) {
+                                       response: RouterResponse,
+                                       onFailure: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
+                                       inProgress: @escaping () -> Void) {
         do {
             _ = try response.redirect("https://api.twitter.com/oauth/authenticate?oauth_token=\(oAuthToken)")
             inProgress()
@@ -262,14 +263,14 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
     ///   - onPass: The closure to invoke when the plugin doesn't recognize the authentication data (usually an
     ///       authentication token) in the request.
     private func accessTokenRequest(request: RouterRequest,
-                            response: RouterResponse,
-                            onSuccess: @escaping (UserProfile) -> Void,
-                            onFailure: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
-                            onPass: @escaping (HTTPStatusCode?, [String:String]?) -> Void) {
+                                    response: RouterResponse,
+                                    onSuccess: @escaping (UserProfile) -> Void,
+                                    onFailure: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
+                                    onPass: @escaping (HTTPStatusCode?, [String:String]?) -> Void) {
         var requestOptions: [ClientRequest.Options] = [.schema("https://"),
-                                                      .hostname("api.twitter.com"),
-                                                      .method("POST"),
-                                                      .path("oauth/access_token")]
+                                                       .hostname("api.twitter.com"),
+                                                       .method("POST"),
+                                                       .path("oauth/access_token")]
         var headers = [String : String]()
         
         let nonce = String.nonce
@@ -282,7 +283,7 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
                           "oauth_token" : oAuthToken,
                           "oauth_version" : "1.0",
                           "oauth_verifier" : oAuthTokenVerifier]
-    
+        
         let url = "https://api.twitter.com/oauth/access_token?oauth_verifier=\(oAuthTokenVerifier)"
         guard let signature = String.oAuthSignature(fromMethod: "POST",
                                                     urlString: url,
@@ -308,45 +309,44 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
             var body = Data()
             do {
                 try accessTokenResponse.readAllData(into: &body)
-                let string = String(data: body, encoding: .utf8)
                 
-                var responseDictionary = [String : String]()
-                guard let fields = string?.components(separatedBy: "&") else {
-                    Log.error("Twitter access token response not correct format: \(string)")
-                    onPass(accessTokenResponse.statusCode, .none)
-                    return
-                }
-                
-                for field in fields {
-                    let keyValue = field.components(separatedBy: "=")
-                    if let key = keyValue.first,
-                        let value = keyValue.last {
-                        responseDictionary[key] = value
+                do {
+                    let responseDictionary = try body.twitterResponseDictionary()
+                    
+                    guard let id = responseDictionary[self.userIDKey],
+                        let displayName = responseDictionary[self.screenNameKey],
+                        let newOAuthToken = responseDictionary[self.oAuthTokenKey],
+                        let newOAuthTokenSecret = responseDictionary[self.oAuthTokenSecretKey] else {
+                            Log.error("Twitter access token response did not contain user_id, screen_name, oauth_token, or oauth_token_secret.")
+                            onPass(accessTokenResponse.statusCode, .none)
+                            return
                     }
-                    else {
-                        Log.error("Twitter access token response not correct format: \(string)")
-                        onPass(accessTokenResponse.statusCode, .none)
-                        return
-                    }
+                    
+                    self.oAuthToken = newOAuthToken
+                    self.oAuthTokenSecret = newOAuthTokenSecret
+                    
+                    let user = UserProfile(id: id,
+                                           displayName: displayName,
+                                           provider: self.name)
+                    self.userProfileDelegate?.update(userProfile: user, from: responseDictionary)
+                    onSuccess(user)
                 }
-                
-                guard let id = responseDictionary[userIDKey],
-                    let displayName = responseDictionary[screenNameKey],
-                    let newOAuthToken = responseDictionary[oAuthTokenKey],
-                    let newOAuthTokenSecret = responseDictionary[oAuthTokenSecretKey] else {
-                        Log.error("Twitter access token response did not contain user_id, screen_name, oauth_token, or oauth_token_secret.")
-                        onPass(accessTokenResponse.statusCode, .none)
-                        return
+                catch TwitterResponseError.dataNotString {
+                    Log.error("Twitter token response body data could not be converted to String.")
+                    onPass(optionalResponse?.statusCode, nil)
                 }
-                
-                self.oAuthToken = newOAuthToken
-                self.oAuthTokenSecret = newOAuthTokenSecret
-                
-                let user = UserProfile(id: id,
-                                       displayName: displayName,
-                                       provider: self.name)
-                self.userProfileDelegate?.update(userProfile: user, from: responseDictionary)
-                onSuccess(user)
+                catch TwitterResponseError.noQueryComponents(let string) {
+                    Log.error("Twitter token response body did not have query components. String: \(string)")
+                    onPass(optionalResponse?.statusCode, nil)
+                }
+                catch TwitterResponseError.noKeyValuePairs(let string) {
+                    Log.error("Twitter token response body did not have keys or values. String: \(string)")
+                    onPass(optionalResponse?.statusCode, nil)
+                }
+                catch {
+                    Log.error("Twitter token response body data not valid.")
+                    onPass(optionalResponse?.statusCode, nil)
+                }
             }
             catch {
                 Log.error("Twitter access token response could not read body data.")

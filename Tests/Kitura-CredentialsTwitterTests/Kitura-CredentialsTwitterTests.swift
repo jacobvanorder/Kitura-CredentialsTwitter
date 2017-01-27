@@ -17,25 +17,30 @@
 import XCTest
 @testable import Kitura_CredentialsTwitter
 
-var consumerKey = "UdYo5tCHu8HdmY1uIoZxg1kNA"
-var consumerSecret = "MacxkjCjsLgckelqTNQkQBB3WVLKYhb48VZOD7l51rmt1WcFtV"
-var oAuthToken = "z1obMQAAAFAAynC1AAABWaLpD3U"
-var oAuthTokenSecret = "g5qyyHw7txbYaLWZpFgl77wEtjHohgRf"
-var oAuthTokenVerifier = "3lEFtnq9wzKavfSYSnPyntsLOk8FpOkE"
+let consumerKey = "UdYo5tCHu8HdmY1uIoZxg1kNA"
+let consumerSecret = "MacxkjCjsLgckelqTNQkQBB3WVLKYhb48VZOD7l51rmt1WcFtV"
+let oAuthToken = "z1obMQAAAFAAynC1AAABWaLpD3U"
+let oAuthTokenSecret = "g5qyyHw7txbYaLWZpFgl77wEtjHohgRf"
+let oAuthTokenVerifier = "3lEFtnq9wzKavfSYSnPyntsLOk8FpOkE"
 
-var parametersForRequest: [String : String] = ["oauth_consumer_key" : consumerKey,
+let parametersForRequest: [String : String] = ["oauth_consumer_key" : consumerKey,
                                                "oauth_nonce" : "HEYTHEREBL1MPYBOY",
                                                "oauth_signature_method" : "HMAC-SHA1",
                                                "oauth_timestamp" : "1484496492",
                                                "oauth_version" : "1.0"]
 
-var parametersForAuth: [String : String] = ["oauth_consumer_key" : consumerKey,
+let parametersForAuth: [String : String] = ["oauth_consumer_key" : consumerKey,
                                             "oauth_nonce" : "FLY1NGTHROUGHTHESKYSOFANCYFREE",
                                             "oauth_signature_method" : "HMAC-SHA1",
                                             "oauth_timestamp" : "1484496900",
                                             "oauth_token":  oAuthToken,
                                             "oauth_version" : "1.0",
                                             "oauth_verifier" : oAuthTokenVerifier]
+
+let twitterRequestResponse: Data = "1=2&3=4".data(using: String.Encoding.utf8)!
+let twitterRequestResponseNotString: Data = Data()
+let twitterRequestResponseNoQueries = "AmberDempsey".data(using: String.Encoding.utf8)!
+let twitterRequestResponseNoKeyValues = "LittleMissSpringfield&WhichOneWillItBe&Me".data(using: String.Encoding.utf8)!
 
 #if os(Linux)
     extension CredentialsTwitterTests {
@@ -45,6 +50,10 @@ var parametersForAuth: [String : String] = ["oauth_consumer_key" : consumerKey,
                 ("testOAuthAuthorizationStringForRequest", testOAuthAuthorizationStringForRequest),
                 ("testSecretStringForAuth", testSecretStringForAuth),
                 ("testOAuthAuthorizationStringForAuth", testOAuthAuthorizationStringForAuth),
+                ("testTwitterResponseDictionary", testTwitterResponseDictionary),
+                ("testBadDataTwitterResponseDictionary", testBadDataTwitterResponseDictionary),
+                ("testNoQueriesTwitterResponseDictionary", testNoQueriesTwitterResponseDictionary),
+                ("testNoKeysValuesTwitterResponseDictionary", testNoKeysValuesTwitterResponseDictionary),
             ]
         }
     }
@@ -58,7 +67,7 @@ public class CredentialsTwitterTests: XCTestCase {
                                               consumerSecret: consumerSecret)
         XCTAssertEqual(signature, "AtzhrRroa4Z41uZF8aIfMebd26g%3D")
     }
-
+    
     public func testOAuthAuthorizationStringForRequest() {
         var parameters = parametersForRequest
         let signature = String.oAuthSignature(fromMethod: "POST",
@@ -66,11 +75,11 @@ public class CredentialsTwitterTests: XCTestCase {
                                               parameters: parameters,
                                               consumerSecret: consumerSecret)
         parameters["oauth_signature"] = signature
-
+        
         let oAuthAuthorizationHeaderString = String.oAuthAuthorizationString(fromParameters: parameters)
         XCTAssertEqual(oAuthAuthorizationHeaderString, "OAuth oauth_consumer_key=\"UdYo5tCHu8HdmY1uIoZxg1kNA\",oauth_nonce=\"HEYTHEREBL1MPYBOY\",oauth_signature=\"AtzhrRroa4Z41uZF8aIfMebd26g%3D\",oauth_signature_method=\"HMAC-SHA1\",oauth_timestamp=\"1484496492\",oauth_version=\"1.0\"")
     }
-
+    
     public func testSecretStringForAuth() {
         let url = "https://api.twitter.com/oauth/access_token?oauth_verifier=\(oAuthTokenVerifier)"
         let signature = String.oAuthSignature(fromMethod: "POST",
@@ -80,7 +89,7 @@ public class CredentialsTwitterTests: XCTestCase {
                                               oAuthToken: oAuthTokenSecret)
         XCTAssertEqual(signature, "OXH4boFCnH6sQXFCOTxC3SUCUVc%3D")
     }
-
+    
     public func testOAuthAuthorizationStringForAuth() {
         var parameters = parametersForAuth
         let url = "https://api.twitter.com/oauth/access_token?oauth_verifier=\(oAuthTokenVerifier)"
@@ -90,8 +99,58 @@ public class CredentialsTwitterTests: XCTestCase {
                                               consumerSecret: consumerSecret,
                                               oAuthToken: oAuthTokenSecret)
         parameters["oauth_signature"] = signature
-
+        
         let oAuthAuthorizationHeaderString = String.oAuthAuthorizationString(fromParameters: parameters)
         XCTAssertEqual(oAuthAuthorizationHeaderString, "OAuth oauth_consumer_key=\"UdYo5tCHu8HdmY1uIoZxg1kNA\",oauth_nonce=\"FLY1NGTHROUGHTHESKYSOFANCYFREE\",oauth_signature=\"OXH4boFCnH6sQXFCOTxC3SUCUVc%3D\",oauth_signature_method=\"HMAC-SHA1\",oauth_timestamp=\"1484496900\",oauth_token=\"z1obMQAAAFAAynC1AAABWaLpD3U\",oauth_verifier=\"3lEFtnq9wzKavfSYSnPyntsLOk8FpOkE\",oauth_version=\"1.0\"")
+    }
+    
+    public func testTwitterResponseDictionary() {
+        do {
+            let responseDictionary = try twitterRequestResponse.twitterResponseDictionary()
+            XCTAssertEqual(responseDictionary["1"], "2")
+            XCTAssertEqual(responseDictionary["3"], "4")
+        }
+        catch {
+            XCTAssert(true, "twitter response dictionary not correct")
+        }
+    }
+    
+    public func testBadDataTwitterResponseDictionary() {
+        do {
+            _ = try twitterRequestResponseNotString.twitterResponseDictionary()
+            XCTAssert(true, "Twitter response dictionary succeeded despite bad data.")
+        }
+        catch TwitterResponseError.dataNotString {
+            
+        }
+        catch {
+            XCTAssert(true, "Twitter response dictionary gave bad error.")
+        }
+    }
+    
+    public func testNoQueriesTwitterResponseDictionary() {
+        do {
+            _ = try twitterRequestResponseNoQueries.twitterResponseDictionary()
+            XCTAssert(true, "Twitter response dictionary succeeded despite no queries.")
+        }
+        catch TwitterResponseError.noQueryComponents(let string) {
+            XCTAssertEqual(string, "AmberDempsey")
+        }
+        catch {
+            XCTAssert(true, "Twitter response dictionary gave bad error for no query string.")
+        }
+    }
+    
+    public func testNoKeysValuesTwitterResponseDictionary() {
+        do {
+            _ = try twitterRequestResponseNoQueries.twitterResponseDictionary()
+            XCTAssert(true, "Twitter response dictionary succeeded despite no no key value pairs.")
+        }
+        catch TwitterResponseError.noQueryComponents(let string) {
+            XCTAssertEqual(string, "LittleMissSpringfield&WhichOneWillItBe&Me")
+        }
+        catch {
+            XCTAssert(true, "Twitter response dictionary gave bad error for no key values string.")
+        }
     }
 }
