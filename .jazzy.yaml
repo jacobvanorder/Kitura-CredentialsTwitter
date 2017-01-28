@@ -1,0 +1,14 @@
+module: Kitura_CredentialsTwitter
+author: Jacob Van Order
+github_url: https://github.com/jacobvanorder/Kitura-CredentialsTwitter/
+
+theme: fullwidth
+clean: true
+exclude: [Packages]
+
+readme: README.md
+
+skip_undocumented: false
+hide_documentation_coverage: false
+
+xcodebuild_arguments: [-project, Kitura-CredentialsTwitter.xcodeproj, -target, Kitura-CredentialsTwitter, LIBRARY_SEARCH_PATHS=.build/debug]
