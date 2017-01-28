@@ -15,6 +15,7 @@
  **/
 
 import XCTest
+import Foundation
 @testable import Kitura_CredentialsTwitter
 
 let consumerKey = "UdYo5tCHu8HdmY1uIoZxg1kNA"

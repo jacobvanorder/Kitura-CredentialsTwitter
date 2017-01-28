@@ -25,10 +25,10 @@ internal extension String {
     
     static func oAuthAuthorizationString(fromParameters parameters: [String : String]) -> String {
         var keyValues = [String]()
-        for (key, value) in parameters {
+        for (key, value) in parameters.sorted(by: {$0.0 < $1.0}) {
             keyValues.append("\(key)=\"\(value)\"")
         }
-        return "OAuth " + keyValues.sorted().joined(separator: ",")
+        return "OAuth " + keyValues.joined(separator: ",")
     }
     
     /// Twitter OAuth requires that within the OAuth string, an entry for the oauth_signature is entered.
