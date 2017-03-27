@@ -35,8 +35,8 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
     let oAuthTokenKey = "oauth_token"
     let oAuthTokenSecretKey = "oauth_token_secret"
     let oAuthVerifierKey = "oauth_verifier"
-    let userIDKey = "user_id"
-    let screenNameKey = "screen_name"
+    private let userIDKey = "user_id"
+    private let screenNameKey = "screen_name"
     
     /// You must register an app at https://apps.twitter.com in order to get the consumer key.
     let consumerKey: String
