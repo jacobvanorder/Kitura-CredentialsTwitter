@@ -169,7 +169,7 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
         let twitterRequest = HTTP.request(requestOptions) {
             (optionalResponse) in
             guard let tokenResponse = optionalResponse, tokenResponse.statusCode == HTTPStatusCode.OK else {
-                Log.error("Twitter token response returned with \(optionalResponse?.statusCode)")
+                Log.error("Twitter token response returned with \(String(describing: optionalResponse?.statusCode))")
                 onFailure(optionalResponse?.statusCode, nil)
                 return
             }
@@ -301,7 +301,7 @@ public class CredentialsTwitter: CredentialsPluginProtocol {
         let twitterRequest = HTTP.request(requestOptions) {
             (optionalResponse) in
             guard let accessTokenResponse = optionalResponse, accessTokenResponse.statusCode == .OK else {
-                Log.error("Twitter access token response returned with \(optionalResponse?.statusCode)")
+                Log.error("Twitter access token response returned with \(String(describing: optionalResponse?.statusCode))")
                 onFailure(optionalResponse?.statusCode, nil)
                 return
             }
